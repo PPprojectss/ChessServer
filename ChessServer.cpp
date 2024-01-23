@@ -4,21 +4,26 @@
 #include <winsock2.h>
 #include <string>
 #include <thread>
+#include <stdlib.h>
+#include <time.h>       
 
 #include <vector>
+#include <algorithm>
 
-#define buf 512
+#define buf 128
 
 struct Room 
 { 
     SOCKET* player1; 
     SOCKET* player2; 
-    bool started; 
-};
+    bool started;
 
+    int id;
+};
 
 std::vector<std::thread*> workers;
 std::vector<Room*> rooms;
+std::vector<int> avaibleRooms;
 int g_id = 0;
 
 void sendMessage(SOCKET* client, std::string msg)
@@ -28,33 +33,92 @@ void sendMessage(SOCKET* client, std::string msg)
 
 std::string receiveMassage(SOCKET* client)
 {
-    char text[1024];
+    char text[buf];
+
+
     int rc = recv(*client, text, buf, 0);
-    return std::string(text);
+
+
+    if (rc == -1)
+        return "DISS";
+    else
+        return std::string(text);
 
 }
 
-void game(int id)
+void game(Room room)
 {
-    while (rooms[id]->started != true)
-        ;
+    short randTurn = rand() % 2;
 
-    bool whiteTurn = true;
-
-    sendMessage(rooms[id]->player1, "Start W");
-    sendMessage(rooms[id]->player2, "Start B");
-
-    while (true)
+    if (randTurn == 0)
     {
-        std::string recv;
-        // tura player 1
-        recv = receiveMassage(rooms[id]->player1);
-        std::cout << recv << std::endl;
-        sendMessage(rooms[id]->player2, recv);
-        // tura player 2
-        recv = receiveMassage(rooms[id]->player2);
-        std::cout << recv << std::endl;
-        sendMessage(rooms[id]->player1, recv);
+        sendMessage(room.player1, "Start W");
+        sendMessage(room.player2, "Start B");
+
+        while (true)
+        {
+            std::string recv;
+
+            // tura player 1
+            recv = receiveMassage(room.player1);
+            if (recv != "DISS")
+                sendMessage(room.player2, recv);
+            else if (recv == "END")
+            {
+                sendMessage(room.player2, recv);
+                return;
+            }
+            else
+                return;
+
+            // tura player 2
+            recv = receiveMassage(room.player2);
+            if (recv != "DISS")
+                sendMessage(room.player1, recv);
+            else if (recv == "END")
+            {
+                sendMessage(room.player1, recv);
+                return;
+            }
+            else
+                return;
+        }
+    }
+    else
+    {
+        sendMessage(room.player1, "Start B");
+        sendMessage(room.player2, "Start W");
+
+        while (true)
+        {
+            std::string recv;
+
+            // tura player 2
+            recv = receiveMassage(room.player2);
+            std::cout << recv << std::endl;
+            if (recv != "DISS")
+                sendMessage(room.player1, recv);
+            else if (recv == "END")
+            {
+                sendMessage(room.player1, recv);
+                return;
+            }
+            else
+                return;
+
+            // tura player 1
+            recv = receiveMassage(room.player1);
+            std::cout << recv << std::endl;
+            if (recv != "DISS")
+                sendMessage(room.player2, recv);
+            else if (recv == "END")
+            {
+                sendMessage(room.player2, recv);
+                return;
+            }
+            else
+                return;
+        }
     }
 
     return;
@@ -62,32 +126,64 @@ void game(int id)
 
 void lobby(SOCKET* player)
 {
-    std::cout << "Dołączył nowy gracz" << std::endl;
-    
+    std::cout << "New player connected" << std::endl;
 
-    std::string ans = receiveMassage(player);
-
-    if (ans[0] == 'C')
+    while (true)
     {
-        std::cout << "Gracz chce utworzyć pokój" << std::endl;
-        
-        Room* room = new Room;
-        room->player1 = player;
-        room->player2 = nullptr;
-        room->started = false;
-        rooms.push_back(room);
+        std::string ans = receiveMassage(player);
+        int tmp = 0;
 
-        workers.push_back(new std::thread(game, g_id));
-        g_id++;
-    }
-    else if (ans[0] == 'J')
-    {
-        ans.erase(ans.begin(), ans.begin() + 2);
-        int tmp = strtol(ans.c_str(), NULL, 0);
-        std::cout << "Gracz chce dołączyć do pokoju " << tmp << std::endl;
+        if (ans[0] == 'C')
+        {
+            std::cout << "Created Room: " << g_id << std::endl;
 
-        rooms[tmp]->player2 = player;
-        rooms[tmp]->started = true;
+            sendMessage(player, std::to_string(g_id));
+
+            Room room;
+            room.player1 = player;
+            room.player2 = nullptr;
+            room.started = false;
+            room.id = g_id;
+
+            avaibleRooms.push_back(g_id);
+            rooms.push_back(&room);
+
+            g_id++;
+
+            while (room.player2 == nullptr);
+
+            workers.push_back(new std::thread(game, room));
+
+            return;
+        }
+        else if (ans[0] == 'J')
+        {
+            ans.erase(ans.begin(), ans.begin() + 2);
+            tmp = strtol(ans.c_str(), NULL, 0);
+            std::cout << "Player want to join room " << tmp << std::endl;
+
+            for (int i = 0; i < avaibleRooms.size(); i++)
+            {
+                if (tmp == avaibleRooms[i])
+                {
+                    std::cout << "Player succsesfully connected to room: " << tmp << std::endl;
+
+
+                    rooms[avaibleRooms[i]]->player2 = player;
+                    rooms[avaibleRooms[i]]->started = true;
+                    avaibleRooms.erase(std::remove(avaibleRooms.begin(), avaibleRooms.end(), avaibleRooms[i]), avaibleRooms.end());
+
+                    return;
+                }
+
+            }
+        }
+
+        std::string errr = "";
+        errr.append("Error: Room ");
+        errr.append(std::to_string(tmp));
+        errr.append(" is not aviable");
+        sendMessage(player, errr);
     }
 
     return;
@@ -95,6 +191,8 @@ void lobby(SOCKET* player)
 
 int main()
 {
+    srand(time(NULL));
+
     WSADATA wsaData;
 
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -141,20 +239,8 @@ int main()
         workers.push_back(new std::thread(lobby, acceptSocket));
     }
 
-    //mainSocket = acceptSocket;
+    std::cin;
+    std::cin;
 
-
-    int bytesSent;
-    int bytesRecv = SOCKET_ERROR;
-    char sendbuf[32] = "Server says hello!";
-    char recvbuf[32] = "";
-
-    bytesRecv = recv(mainSocket, recvbuf, 32, 0);
-    printf("Bytes received: %ld\n", bytesRecv);
-    printf("Received text: %s\n", recvbuf);
-
-    bytesSent = send(mainSocket, sendbuf, strlen(sendbuf), 0);
-    printf("Bytes sent: %ld\n", bytesSent);
-
-    system("pause");
+    return 0;
 }
