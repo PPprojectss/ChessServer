@@ -195,15 +195,24 @@ int main()
 
     WSADATA wsaData;
 
+    std::string ip;
+    short port;
+
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (result != NO_ERROR)
         printf("Initialization error.\n");
 
+    std::cout << "Aby uruchomic serwer: " << std::endl;
+    std::cout << "Podaj adres IP: ";
+    std::cin >> ip;
+    std::cout << "Podaj port: ";
+    std::cin >> port;
+
     sockaddr_in saddr;
     memset(&saddr, 0, sizeof(saddr));
     saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    saddr.sin_port = htons(4109);
+    saddr.sin_addr.s_addr = inet_addr(ip.c_str());
+    saddr.sin_port = htons(port);
 
     SOCKET mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (mainSocket == INVALID_SOCKET)
