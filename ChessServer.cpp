@@ -10,7 +10,7 @@
 #include <vector>
 #include <algorithm>
 
-#define buf 128
+#define buf 64
 
 struct Room 
 { 
@@ -28,21 +28,46 @@ int g_id = 0;
 
 void sendMessage(SOCKET* client, std::string msg)
 {
+    std::string data = msg;
+    msg.append("\n");
     send(*client, msg.c_str(), buf, 0);
 }
 
 std::string receiveMassage(SOCKET* client)
 {
-    char text[buf];
+    std::string data = "";
+    std::string garbage = "";
+
+    //int rc = read(m_con, buf, sizeof(buf));
+
+    bool EOM = false; // end of messege
+
+    while (!EOM)
+    {
+        char tmp[buf];
+        int rc = recv(*client, tmp, buf, 0);
+
+        for (int i = 0; i < rc; i++)
+        {
+            if (tmp[i] == '\n')
+            {
+                EOM = true;
+
+                for (int j = i; j < buf; j++)
+                    garbage += tmp[j];
+
+                break;
+            }
+            data += tmp[i];
+        }
+
+    }
 
 
-    int rc = recv(*client, text, buf, 0);
 
+    std::cout << "Received: " << data << std::endl;
 
-    if (rc == -1)
-        return "DISS";
-    else
-        return std::string(text);
+    return data;
 
 }
 
