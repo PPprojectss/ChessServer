@@ -10,8 +10,9 @@
 #include <vector>
 #include <algorithm>
 
-#define buf 64
+#define buf 64 //z góry okoreślony bufor przyjmowanych danych
 
+// struktura dla wątku gry która przechowuje oba sockety dopasowanych graczy
 struct Room 
 { 
     SOCKET* player1; 
@@ -20,20 +21,26 @@ struct Room
 
     int id;
 };
-
-std::vector<std::thread*> workers;
 std::vector<Room*> rooms;
+
+// dynamiczna tablice przechowująca wszystkie wątki jakie zostaną utworzone podczas działania serwera
+//'pokoje' czyli wątki z przypisanymi im połączonymi klientami są obsługiwane niezależnie
+std::vector<std::thread*> workers;
+
+
+// dynamiczna tablica z listą utworzonych pokoi
 std::vector<int> avaibleRooms;
 int g_id = 0;
 
-void sendMessage(SOCKET* client, std::string msg)
+
+void sendMessage(SOCKET* client, std::string msg) // funkcja do wysyłu danych
 {
     std::string data = msg;
     msg.append("\n");
     send(*client, msg.c_str(), buf, 0);
 }
 
-std::string receiveMassage(SOCKET* client)
+std::string receiveMassage(SOCKET* client) // funkcja do odbioru danych
 {
     std::string data = "";
     std::string garbage = "";
@@ -46,6 +53,9 @@ std::string receiveMassage(SOCKET* client)
     {
         char tmp[buf];
         int rc = recv(*client, tmp, buf, 0);
+
+        if(rc == -1)
+            return "DISS";
 
         for (int i = 0; i < rc; i++)
         {
@@ -71,9 +81,10 @@ std::string receiveMassage(SOCKET* client)
 
 }
 
+// Funkcnja / pokój rozpoczynające gre dwóch graczy
 void game(Room room)
 {
-    short randTurn = rand() % 2;
+    short randTurn = rand() % 2; // losowy wybór kto będzie białymi pionkami a kto czarnymi
 
     if (randTurn == 0)
     {
@@ -86,9 +97,9 @@ void game(Room room)
 
             // tura player 1
             recv = receiveMassage(room.player1);
-            if (recv != "DISS")
+            if (recv != "DISS") // wiadomość o rozłączeniu gracza
                 sendMessage(room.player2, recv);
-            else if (recv == "END")
+            else if (recv == "END") // wiadomość koniec gry od gracza
             {
                 sendMessage(room.player2, recv);
                 return;
@@ -148,7 +159,7 @@ void game(Room room)
 
     return;
 }
-
+// funkcja / pokój w którym przetrzymywani są gracze czekający na drugą osobe lub przeydzielająca do pokoju (zależy od wyboru klienta)
 void lobby(SOCKET* player)
 {
     std::cout << "New player connected" << std::endl;
@@ -256,7 +267,7 @@ int main()
     if (listen(mainSocket, 1) == SOCKET_ERROR)
         printf("Error listening on socket.\n");
 
-    while (true)
+    while (true) // pętla do obsługi nowo podłączonych graczy
     {
         SOCKET* acceptSocket = new SOCKET;
         *acceptSocket = SOCKET_ERROR;
