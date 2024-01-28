@@ -1,0 +1,2 @@
+ 
+gcc -std=c++11 ChessServer.cpp -lstdc++ -o server -pthread
