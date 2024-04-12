@@ -1,6 +1,16 @@
-– temat zadania,
+– temat zadania, opis aplikacji
 
 Gra logiczna lub zręcznościowa, szachy
+
+Aplikacja do poprawnego funkcjonowania potrzebuje serwera, po poprawnym połączeniu pokaże się menu.
+Gracz może utworzyć pokój (zostanie poinformowany o id pokoju) lub dołączyć do pokoju (musi podać id pokoju).
+Kiedy dwóch graczy zostanie podłączonych do jednego pokoju rozpoczyna się gra, pokaże się szachownica z pionkami (kto zaczyna pierwszy jest losowe).
+Do generowania obrazu użyłem biblioteki SFML, która odpowiada za generowanie okna, obrazu 2d oraz obsługuje zdarzenia wejścia/wyjścia.
+
+Zasady to klasyczne szachy, gracz aby ruszyć pionek musi go przytrzymać lewym przyciskiem myszy a następnie przesunąć na odpowiednie pole (podświetli się na zielon)
+
+![obraz](https://github.com/PPprojectss/ChessServer/assets/152525122/018133d2-b277-4fa3-8b7c-4439a120a44d)
+
 
 – opis protokołu komunikacyjnego,
 
